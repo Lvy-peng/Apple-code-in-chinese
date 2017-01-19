@@ -72,6 +72,31 @@ iOS 有很多秘密的调试工具，包括环境变量，设置，程序等等�
 
 实际上，这个只适用于intel 32位，iPhone模拟器上。
 
+####配置文件
+一些 iOS 的子系统有调试工具，可以通过安装一个特殊的配置文件开启。Push Notification 就是一个例子。通常这样安装一个配置文件:
+* 放在 web 服务器上面，然后在设备的 Safari 上面下载。
+* 放在邮件的附件中，发送给设备的关联账户，然后在 Mail中打开附件中的配置文件。
+
+关于配置文件你可以看 [iPhone in Business](http://www.apple.com/iphone/business/).
+
+#### 查看调试输出
+程序通常使用如下机制生成调试日志:
+* NSLog
+* 打印到stderr(标准错误)
+* 系统日志
+
+NSLog 是一个高级 API 用于输出的，在 Objective-c 代码中被广泛使用。NSLog 的具体行为惊人的复杂，随着时间的过去，它已经被改变很多了。谈论他超出了这篇文档的范围。然而，要知道 NSLog 打印输出流，或者系统日志，或者两者都有。如果你理解这两种机制，你可以通过 NSLog 看任何你想查看的。
+
+打印到 stderr 是最常用的实用输出机制之一。考虑到这个话题的重要性，将在降下来的章节中深入讨论。
+
+查看系统日志最简单的方法是在 Xcode 的 Organizer 窗口看控制台输出。如果有人不想安装 Xcode,可以看系统日志使用[iPhone Configureration Utility](https://support.apple.com/business-education)
+
+####控制台输出
+很多程序，事实上是很多的系统框架，打印调试信息到 stderr. 这个输出的目的最终由程序决定。他可以重定向 stderr 不管选择的目的是什么。然而，在大多数的情况下，一个程序不会重定向 stderr，
+
+
+
+
 
 	
 
