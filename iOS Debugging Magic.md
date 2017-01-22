@@ -545,7 +545,181 @@ Core Foundation 支持一个叫做 CFZombieLevel 的环境变量。此变量包�
 Core Animation 工具可以帮助你测量程序的计算速率和各种图。细节看[Instrumenrs User Guide](https://developer.apple.com/library/content/documentation/DeveloperTools/Conceptual/InstrumentsUserGuide/Introduction/Introduction.html).
 
 ####Cocoa 和 Cocoa Touch
+所有的 Cocoa 对象，即 NSObject，支持一个 description 方法，返回一个NSString 字符串。最简便的调用方法是通过 Xcode 的 Print Description 菜单控制台命令。另外，如果你喜欢用命令行，可以使用 GDB 的 print-object （po）命令。见表9。
 
+表9:使用GDB 的 po命令
+<pre>$ gdb /Applications/TextEdit.app
+GNU gdb 6.3.50-20050815 (Apple version gdb-1346) […]
+(gdb) fb -[NSCFDictionary copyWithZone:]
+Breakpoint 1 at 0x83126e97675259
+(gdb) r
+Starting program: /Applications/TextEdit.app/Contents/MacOS/TextEdit 
+Reading symbols for shared libraries […]
+Breakpoint 1, 0x00007fff837aa259 in -[NSCFDictionary copyWithZone:] ()
+(gdb) po $rdi
+{
+    AddExtensionToNewPlainTextFiles = 1;
+    AutosaveDelay = 30;
+    CheckGrammarWithSpelling = 0;
+    CheckSpellingWhileTyping = 1;
+    […]
+}
+</pre>
+
+#### Objective-C
+断在 Objective_C 异常上，无论是怎么抛出这个异常的。设置断点在 objc_exception_throw. 最简单的方法是使用 Xcode 的Objective-C异常控制台命令 Stop.
+
+>信息:这比打断点在 [NSException raise]好，因为即使使用 @throw 也有用。
+
+#####汇编级别 Objective-C 调试
+在汇编级别调试 Cocoa 代码时，记住以下几个 Objective-C 运行时特性:
+* Objective-C 编译器在每个方法上增加了两个隐性参数，第一个是指向调用的对象的(self).
+* 第二个隐性参数是一个选择子(_cmd),Objective-C 类型是 SET. GDB 可以用 C 打印出来。
+* Objective-C 的运行时函数分发通过一组 C 函数实现，最常见的是 objc_msgsend.但是一些架构使用 objc_msgSend_stret 当返回结构体的方法时。一些架构使用 objc_msgSend_fpret 当返回值是浮点数的函数时。super 也有等效的函数调用(objc_msgSendSuper等等)。
+* Objective-C 对象的第一个字段是 isa, 一个指向对象所属类的指针。
+
+>提示:如果你想学习更多 Objective-C 的消息分发机制，请看 [这篇文章](http://sealiesoftware.com/blog/archive/2008/09/22/objc_explain_So_you_crashed_in_objc_msgSend.html).
+
+表8总结了如果是用 self 和 _cmd.
+表8:
+
+|架构|self|_cmd|
+|----|:----:|----:|
+|ARM| $r0| $r1|
+|Intel 32位| *(int *)($esp + 4)| *(int *)($esp + 8)|
+
+表 10 展示了如何使用这个信息用 GDB.
+
+>重要：表10和表11都在 Mac OS X 上面创建，但是核心技术和 iOS是一致的，阅读一些集合的信息和怎么把这些技术翻译到 iOS。
+
+表10: Objective-C 运行时"秘密"
+<pre>$ gdb /Applications/TextEdit.app
+GNU gdb 6.3.50-20050815 (Apple version gdb-1346) […]
+(gdb) # Give the runtime a chance to start up.
+(gdb) fb NSApplicationMain
+Breakpoint 1 at 0x9374bc69df7307
+(gdb) r
+Starting program: /Applications/TextEdit.app/Contents/MacOS/TextEdit 
+Reading symbols for shared libraries […]
+Breakpoint 1, 0x00007fff841a0307 in NSApplicationMain ()
+(gdb) # Set a breakpoint on -retain.
+(gdb) b *'-[NSObject(NSObject) retain]'
+Breakpoint 2 at 0x7fff8608a860
+(gdb) c
+Continuing.
+
+Breakpoint 2, 0x00007fff8608a860 in -[NSObject(NSObject) retain] ()
+(gdb) # Hit the breakpoint; dump the first 4 words of the object
+(gdb) x/4xg $rdi
+0x1001138f0: 0x00007fff7055e6d8  0x0041002f01a00000
+0x100113900: 0x0069006c00700070  0x0069007400610063
+(gdb) # Now print the selector
+(gdb) x/s $rsi
+0x7fff848d73d8: "retain"
+(gdb) # Want to 'po' object; must disable the breakpoint first
+(gdb) dis
+(gdb) po $rdi
+/Applications/TextEdit.app
+(gdb) # Print the 'isa' pointer, which is a Class object.
+(gdb) po 0xa02d9740
+NSPathStore2</pre>
+
+当没有符号进行调试时，使用运行时的函数可以帮助你调试。列表9列出的很有用。
+
+列表9: 有用的Objective-C 运行时函数
+
+|函数|意义 |
+|----|:----:|
+|id objc_getClass(const char *name);| 根据类名得到类对象|
+|sel_getUid(const char *str);| 根据方法名得到选择子|
+|P class_getMethodImplementation(Class cls, SEL name);| 给定方法名和类得到指向代码实现的指针|
+
+表11 举例了调试  -[DocumentController openUntitledDocumentAndDisplay:error:] 文本编辑的方法。只是文本编辑不带符号。
+
+表11: 使用 Objective-C 运行时调试
+<pre>$ gdb -arch x86_64 /Applications/TextEdit.app
+GNU gdb 6.3.50-20050815 (Apple version gdb-1346) […]
+(gdb) r
+Starting program: /Applications/TextEdit.app/Contents/MacOS/TextEdit 
+Reading symbols for shared libraries […]
+^C
+(gdb) # Try to find the 
+(gdb) # -[DocumentController openUntitledDocumentAndDisplay:error:] 
+(gdb) # symbol.
+(gdb) info func openUntitledDocumentAndDisplay
+All functions matching regular expression "openUntitledDocumentAndDisplay":
+
+Non-debugging symbols:
+0x00007fff843ac083 -[NSDocumentController openUntitledDocumentAndDisplay:error:]
+(gdb) # These are not the droids we're looking for. It turns out that 
+(gdb) # TextEdit ships with its symbols stripped, so we'll have to do 
+(gdb) # this the hard way.
+(gdb) #
+(gdb) # Get the Class object for the DocumentController class.
+(gdb) set $class=(void *)objc_getClass("DocumentController")
+(gdb) # Get the SEL object for the "openUntitledDocumentAndDisplay:error:" method.
+(gdb) set $sel=(void *)sel_getUid("openUntitledDocumentAndDisplay:error:")
+(gdb) # Get a pointer to the method implementation.
+(gdb) call (void*)class_getMethodImplementation($class, $sel)
+$1 = (void *) 0x100001966
+(gdb) # Confirm that this is sensible. Looks like a method prologue to me.
+(gdb) x/4i 0x00009aa5
+0x100001966: push   %rbp
+0x100001967: mov    %rsp,%rbp
+0x10000196a: push   %r12
+0x10000196c: push   %rbx
+(gdb) # Set a breakpoint on the method.
+(gdb) b *0x100001966
+Breakpoint 1 at 0x100001966
+(gdb) # Resume execution, and then create a new, untitled document.
+(gdb) c
+Continuing.
+[…]
+Breakpoint 1, 0x0000000100001966 in ?? ()
+(gdb) # We've hit our breakpoint; print the parameters, starting with 
+(gdb) # the implicit "self" and "SEL" parameters that are common to all 
+(gdb) # methods, followed by the method-specific "display" and 
+(gdb) # "error" parameters.
+(gdb) po $rdi
+<DocumentController: 0x100227a50>
+(gdb) x/s $rsi
+0x7fff848e4e04: "openUntitledDocumentAndDisplay:error:"
+(gdb) p (int)$rdx
+$2 = 1
+(gdb) x/xg $rcx
+0x7fff5fbff108: 0x00000001001238f0</pre>
+
+> Objective-C 允许你查看很多系统方法的私有方法实现细节。你不能在你的最终产品中使用它。
+
+####Foundation
+Foundation 有很多环境变量的调试工具。表10 列出了他们。
+表10: Foundation 环境变量
+
+|名称|默认|行为|
+|----|:----:|----:|
+| NSZombieEnabled | NO|如果设置为 YES, 释放的对象就是僵尸对象。这可以让你很快的调试问题当你给一个对象发送消息时但是他已经释放了，可以在 Zombies！ 中查看更多|
+| NSDeallocateZombies | NO|如果设置为 YES, 僵尸对象的内存会被释放|
+| NSUnbufferedIO |NO|如果设置为 YES,Foundation 使用无缓冲的 I/O,对于 stdout,而 stderr 默认是无缓冲的|
+
+>重要:使用或者不使用 Foundation 的调试技巧，你应该把环境变量设置为 YES 或者 NO。其他系统是0 或者1.
+
+####引用计数
+你可以使用 -retainCount 得到一个对象的当前引用计数。有时这很有用，但是要注意结果。表 12 展示了一种可能的造成困惑的代码。
+
+表12:令人困惑的引用计数
+<pre>(gdb) set $s=(void *)[NSClassFromString(@"NSString") string]
+(gdb) p (int)[$s retainCount]
+$4 = 2147483647
+(gdb) p/x 2147483647
+$5 = 0x7fffffff
+(gdb) # The system maintains a set of singleton strings for commonly 
+(gdb) # used values, like the empty string. The retain count for these 
+(gdb) # strings is a special value indicating that the object can't be 
+(gdb) # released.</pre>
+
+另一个常见的令人困惑的是自动释放机制。如果你的对象已经被自动释放了，引用计数可能要比你想象的高，事实上自动释放池的这个补偿或许将在未来的某个时间发布。
+
+你可以通过调用 _CFAutoreleasePoolPrintPools 这个方法确定哪些对象在自动释放池。打印自动释放池
 
 
 
