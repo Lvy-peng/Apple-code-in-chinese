@@ -30,7 +30,7 @@ iOS 有很多秘密的调试工具，包括环境变量，设置，程序等等�
 
 
 ## 基础
-接下来的几章讲调试工具的细节，很多工具使用相似的技术开启，关闭和查看日志。这涨讲述下这些相似的技术。
+接下来的几章讲调试工具的细节，很多工具使用相似的技术开启，关闭和查看日志。这章讲述下这些相似的技术。
 
 ###开启调试工具
 有些调试工具默认开启,然而，也有很多的工具需要使用下面的方法去开启。
@@ -46,7 +46,7 @@ iOS 有很多秘密的调试工具，包括环境变量，设置，程序等等�
 有些调试工具的使用要使用一些特殊的设置。你可以在 Xcode 中配置一个命令行参数。例2展示了这么做：
 
 例2: 在 Xcode 中设置命令行参数
-![Figure2 icon]https://developer.apple.com/library/content/technotes/tn2239/Art/tn2239_XcodeArgs.png)
+![Figure2 icon](https://developer.apple.com/library/content/technotes/tn2239/Art/tn2239_XcodeArgs.png)
 
 ####可调用接口
 很多系统框架包含接口调试信息的打印输出。GDB 可能设计这些接口是可调用的，或者他们只是现有的调试时有用的 API。表1举例怎么用 GDB 调用调试接口。很明显，他调用 CFBundleGetAllBundles 得到程序加载的所有 bundles 表，然后调用 CGShow 打印出来。
@@ -105,7 +105,7 @@ NSLog 是一个高级 API 用于输出的，在 Objective-c 代码中被广泛�
 * 读取参数
 * 得到返回地址
 
-这些在一下的体系结构章节会提到。
+这些在以下的体系结构章节会提到。
 
 >重要: 以下特定架构章节包含一些规则，如果方法没有任何标准参数，或者标准函数返回值，这些规则就并不适用，你需要自己去查阅文档里的细节。
 
@@ -146,7 +146,7 @@ iOS 的详细调用约定，可以看 [iOS ABI Function Call Guide](https://deve
 于此相反，文档中的其他例子都在Mac OS X 上，所以使用了传统的 GDB 命令行。
 最后，如果你要寻找特定的指令，注意 Shark 的帮助(包含在 Xcode 的开发者 工具)有一个指令指南，包含Intel 和 PowerPC 架构。
 
-####AARM
+####ARM
 ARM 程序首先把四个参数用寄存器传递，返回地址在寄存器LR里。列表1展示了怎么用 GDB 获取这些值当你停在函数的第一条指令时。
 
 列表1: 在 ARM 中读取参数
@@ -319,13 +319,15 @@ Breakpoint 3, 0x940f52cc in __CFXPreferencesGetManagedSourceForBundleIDAndUser (
 (gdb) p/a $eax
 $10 = 0x1079d0
 (gdb) call (void)CFShow($eax)
-managed/com.apple.TextEdit/kCFPreferencesCurrentUser</pre>
+managed/com.apple.TextEdit/kCFPreferencesCurrentUser
+</pre>
 
 ####陷阱
 下面介绍下在汇编级调试可能遇到的一些问题。
 
-#####其他参数
+####其他参数
 汇编级别查看参数时，记住以下几点:
+
 * 如果函数是 C++ 成员函数，隐含的第一个参数是 this.
 * 如果函数时 objective-C 方法，有两个隐含的参数(查看Objective-C的相关细节)
 * 如果一个编译器可以找到一个函数的所有调用者(这通常发生在静态函数身上)，它可以选择将参数以非标准的形式传递。这是一个非常不常见的高效的基于寄存器的 ABI 架构，但是它在 32位程序中比较常见。因此，如果你在32位架构程序上的静态函数上设置断点，当心这令人费解的行为。
