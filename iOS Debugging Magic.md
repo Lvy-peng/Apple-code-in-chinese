@@ -235,9 +235,10 @@ Breakpoint 3, 0x34427e7c in __CFXPreferencesGetManagedSourceForBundleIDAndUser (
 (gdb) p/a $r0
 $9 = 0x1062d0
 (gdb) call (void)CFShow($r0)
-mobile/.GlobalPreferences.plist</pre>
+mobile/.GlobalPreferences.plist
+</pre>
 
-####Intel 32位
+###Intel 32位
 32位架构用在 Iphone 模拟器。
 32位的程序，参数在栈中传递。程序的第一条执行指令在栈顶包含返回地址。下一层包含第一个参数，再下一层包含第二个参数等等。列表二展示了怎么使用 GDB 获取这些值。
 
